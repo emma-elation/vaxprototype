@@ -1,0 +1,670 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Document Vaccine</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@zxing/browser@0.1.4/umd/index.min.js"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Open+Sans:ital,wght@0,400;0,600;0,700;1,400&display=swap" rel="stylesheet" />
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: { sans: ['"Open Sans"', 'sans-serif'] },
+          colors: {
+            vds: {
+              'text-primary':    '#142125',
+              'text-secondary':  '#253a40',
+              'text-muted':      '#657981',
+              'text-icon-muted': '#8398a0',
+              'smoke-regular':   '#616161',
+              'smoke-light':     '#e0e0e0',
+              'smoke-lighter':   '#f2f2f2',
+              'surface-default': '#ffffff',
+              'surface-100':     '#e4eaec',
+              'border':          '#e4eaec',
+              'border-300':      '#b9c6cb',
+              'action-link':     '#296bbc',
+              'navy-500':        '#0e6bdd',
+              'focus-border':    '#4595f7',
+              'input-surface':   '#fffceb',
+              'input-label':     '#657981',
+              'btn-primary':     '#0394ce',
+              'btn-default-bg':  '#e4eaec',
+              'btn-default-fg':  '#253a40',
+              'ghost-color':     '#374e55',
+              'checkbox-border': '#cdd7db',
+              'checkbox-surface':'#f9fafb',
+            }
+          },
+          boxShadow: {
+            dialog: '0px 0px 1px 0px rgba(9,30,66,0.72), 0px 4px 16px 0px rgba(9,30,66,0.16), 0px 8px 32px 0px rgba(9,30,66,0.24)',
+          }
+        }
+      }
+    };
+  </script>
+  <style>
+    body { font-family: 'Open Sans', sans-serif; background: #4a5568; min-height: 100vh; }
+    .scrollbar-thin::-webkit-scrollbar { width: 4px; }
+    .scrollbar-thin::-webkit-scrollbar-track { background: transparent; }
+    .scrollbar-thin::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 2px; }
+  </style>
+</head>
+<body>
+  <div id="root"></div>
+  <script type="text/babel">
+    const { useState, useRef, useEffect } = React;
+
+    /* ── Icons ─────────────────────────────────────────────── */
+    const ChevronIcon = ({ cls = "w-5 h-5" }) => (
+      <svg className={cls} viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.5">
+        <path strokeLinecap="round" strokeLinejoin="round" d="M6 8l4 4 4-4" />
+      </svg>
+    );
+    const CloseIcon = () => (
+      <svg className="w-5 h-5" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.5">
+        <path strokeLinecap="round" strokeLinejoin="round" d="M5 5l10 10M15 5L5 15" />
+      </svg>
+    );
+    const PlusIcon = () => (
+      <svg className="w-4 h-4" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5">
+        <path strokeLinecap="round" d="M8 3v10M3 8h10" />
+      </svg>
+    );
+    const InfoIcon = ({ cls = "w-4 h-4" }) => (
+      <svg className={cls} viewBox="0 0 20 20" fill="currentColor">
+        <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a.75.75 0 000 1.5h.253a.25.25 0 01.244.304l-.459 2.066A1.75 1.75 0 0010.747 15H11a.75.75 0 000-1.5h-.253a.25.25 0 01-.244-.304l.459-2.066A1.75 1.75 0 009.253 9H9z" clipRule="evenodd" />
+      </svg>
+    );
+    const PrintIcon = () => (
+      <svg className="w-5 h-5" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.5">
+        <path strokeLinecap="round" strokeLinejoin="round" d="M6 4.5h8a1 1 0 011 1v3H5v-3a1 1 0 011-1z" />
+        <path strokeLinecap="round" strokeLinejoin="round" d="M5 8.5h10a1.5 1.5 0 011.5 1.5v4H3.5v-4A1.5 1.5 0 015 8.5z" />
+        <rect x="7" y="12" width="6" height="3.5" rx=".5" fill="white" stroke="currentColor" strokeWidth="1.5" />
+        <circle cx="15.5" cy="11" r=".75" fill="currentColor" stroke="none" />
+      </svg>
+    );
+    const BarcodeIcon = ({ cls = "w-[18px] h-[18px]" }) => (
+      <svg className={cls} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+        <rect x="3" y="3" width="7" height="7" rx="1" />
+        <rect x="14" y="3" width="7" height="7" rx="1" />
+        <rect x="3" y="14" width="7" height="7" rx="1" />
+        <rect x="5" y="5" width="3" height="3" fill="currentColor" stroke="none" />
+        <rect x="16" y="5" width="3" height="3" fill="currentColor" stroke="none" />
+        <rect x="5" y="16" width="3" height="3" fill="currentColor" stroke="none" />
+        <path strokeLinecap="round" d="M14 14h2v2h-2zM18 14h3M14 18h3M18 18h3v3M18 21v-3" />
+      </svg>
+    );
+    const ComputerIcon = () => (
+      <svg className="w-5 h-5" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.5">
+        <rect x="2" y="3" width="16" height="11" rx="1.5" />
+        <path strokeLinecap="round" d="M7 17h6" />
+        <path strokeLinecap="round" d="M10 14v3" />
+      </svg>
+    );
+    const PhoneIcon = () => (
+      <svg className="w-5 h-5" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.5">
+        <rect x="5.5" y="2" width="9" height="16" rx="1.5" />
+        <circle cx="10" cy="15.5" r=".75" fill="currentColor" stroke="none" />
+        <path strokeLinecap="round" d="M8 4h4" />
+      </svg>
+    );
+    const SmallChevronIcon = ({ open }) => (
+      <svg className={`w-3 h-3 transition-transform duration-150 ${open ? "rotate-180" : ""}`} viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.5">
+        <path strokeLinecap="round" strokeLinejoin="round" d="M2.5 4.5l3.5 3.5 3.5-3.5" />
+      </svg>
+    );
+
+    const SCAN_METHODS = [
+      { id: "physical", label: "Physical scanner", subtitle: "USB or Bluetooth device",  Icon: () => <BarcodeIcon cls="w-5 h-5" /> },
+      { id: "webcam",   label: "Computer camera",  subtitle: "Built-in or USB webcam",   Icon: ComputerIcon },
+      { id: "mobile",   label: "Mobile camera",    subtitle: "Scan QR to use phone",      Icon: PhoneIcon },
+    ];
+
+    /* ── Sub-components ─────────────────────────────────────── */
+
+    function SxnLabel({ children }) {
+      return (
+        <div className="flex-shrink-0 w-[66px] px-2 pt-[10px] pb-0.5">
+          <span className="block text-[10px] font-bold uppercase tracking-[0.04em] text-vds-smoke-regular leading-[1.4]">
+            {children}
+          </span>
+        </div>
+      );
+    }
+
+    function GhostSelect({ label, value, required, width }) {
+      return (
+        <div className="flex items-center gap-[4px] cursor-pointer" style={{ minWidth: width }}>
+          <div className="flex flex-col">
+            <div className="flex gap-0.5 items-baseline">
+              <span className="text-[10px] text-vds-input-label leading-none whitespace-nowrap">{label}</span>
+              {required && <span className="text-[11px] text-vds-input-label leading-none">*</span>}
+            </div>
+            <div className="flex items-center gap-1 border-b border-transparent">
+              {value
+                ? <span className="text-[14px] text-vds-text-primary leading-[1.4] whitespace-nowrap">{value}</span>
+                : <span className="text-[14px] italic text-vds-text-muted leading-[1.4]">–</span>
+              }
+            </div>
+          </div>
+          <ChevronIcon cls="w-5 h-5 text-vds-border-300 shrink-0" />
+        </div>
+      );
+    }
+
+    function GhostInput({ label, value, required }) {
+      return (
+        <div className="flex flex-col cursor-text">
+          <div className="flex gap-0.5 items-baseline">
+            <span className="text-[10px] text-vds-input-label leading-none">{label}</span>
+            {required && <span className="text-[11px] text-vds-input-label leading-none">*</span>}
+          </div>
+          <div className="border-b border-transparent">
+            {value
+              ? <span className="text-[14px] text-vds-text-primary leading-[1.4]">{value}</span>
+              : <span className="text-[14px] italic text-vds-text-muted leading-[1.4]">–</span>
+            }
+          </div>
+        </div>
+      );
+    }
+
+    function FieldDivider() {
+      return <div className="w-full border-t border-vds-border" />;
+    }
+
+    /* ── Main component ─────────────────────────────────────── */
+    function DocumentVaccineDialog() {
+      const [open, setOpen] = useState(true);
+      const [tab, setTab] = useState("new");
+      const [scanning, setScanning] = useState(false);
+      const [scanPickerOpen, setScanPickerOpen] = useState(false);
+      const [showQR, setShowQR] = useState(false);
+      const [showCamera, setShowCamera] = useState(false);
+      const [cameraError, setCameraError] = useState(false);
+      const [vaccineValue, setVaccineValue] = useState("");
+      const [focused, setFocused] = useState(false);
+      const inputRef = useRef(null);
+      const qrRef = useRef(null);
+      const videoRef = useRef(null);
+      const scanControlsRef = useRef(null);
+
+      useEffect(() => {
+        if (open && inputRef.current) {
+          inputRef.current.focus();
+        }
+      }, [open]);
+
+      function handleScanClick() {
+        setScanPickerOpen(prev => !prev);
+      }
+
+      function handleSelectScanMethod(method) {
+        setScanPickerOpen(false);
+        console.log('Selected scan method:', method.id);
+        if (method.id === 'physical') {
+          if (inputRef.current) inputRef.current.blur();
+          setFocused(false);
+          setScanning(true);
+        } else if (method.id === 'webcam') {
+          setShowCamera(true);
+          setCameraError(false);
+        } else if (method.id === 'mobile') {
+          setShowQR(true);
+        }
+      }
+
+      function handleCameraBack() {
+        setShowCamera(false);
+        setCameraError(false);
+        setScanPickerOpen(true);
+      }
+
+      function handleQRSuccess(value) {
+        setShowQR(false);
+        setVaccineValue(value);
+        setTimeout(() => { if (inputRef.current) { inputRef.current.focus(); setFocused(true); } }, 0);
+      }
+
+      function handleCancelScan() {
+        setScanning(false);
+        setTimeout(() => {
+          if (inputRef.current) {
+            inputRef.current.focus();
+            setFocused(true);
+          }
+        }, 0);
+      }
+
+      useEffect(() => {
+        if (!scanning) return;
+        let buffer = "";
+        let timer = null;
+        function onKey(e) {
+          if (e.key === "Enter") {
+            if (buffer) {
+              setVaccineValue(buffer);
+              setScanning(false);
+              setFocused(true);
+            }
+            buffer = "";
+          } else if (e.key.length === 1) {
+            buffer += e.key;
+            clearTimeout(timer);
+            timer = setTimeout(() => { buffer = ""; }, 100);
+          }
+        }
+        window.addEventListener("keydown", onKey);
+        return () => { window.removeEventListener("keydown", onKey); clearTimeout(timer); };
+      }, [scanning]);
+
+      useEffect(() => {
+        if (showQR && qrRef.current) {
+          qrRef.current.innerHTML = '';
+          new QRCode(qrRef.current, {
+            text: 'https://elation.health/vax-scan/demo',
+            width: 160,
+            height: 160,
+            colorDark: '#142125',
+            colorLight: '#ffffff',
+          });
+        }
+      }, [showQR]);
+
+      useEffect(() => {
+        if (!showCamera) {
+          if (scanControlsRef.current) { scanControlsRef.current.stop(); scanControlsRef.current = null; }
+          return;
+        }
+        let stopped = false;
+        const start = async () => {
+          if (!videoRef.current) return;
+          try {
+            const reader = new ZXingBrowser.BrowserMultiFormatReader();
+            const controls = await reader.decodeFromVideoDevice(
+              undefined,
+              videoRef.current,
+              (result) => {
+                if (result && !stopped) {
+                  stopped = true;
+                  controls.stop();
+                  scanControlsRef.current = null;
+                  setShowCamera(false);
+                  setVaccineValue(result.getText());
+                  setTimeout(() => { if (inputRef.current) { inputRef.current.focus(); setFocused(true); } }, 100);
+                }
+              }
+            );
+            if (stopped) { controls.stop(); return; }
+            scanControlsRef.current = controls;
+          } catch {
+            if (!stopped) setCameraError(true);
+          }
+        };
+        const t = setTimeout(start, 50);
+        return () => {
+          stopped = true;
+          clearTimeout(t);
+          if (scanControlsRef.current) { scanControlsRef.current.stop(); scanControlsRef.current = null; }
+        };
+      }, [showCamera]);
+
+      const inputActive = focused || vaccineValue.length > 0;
+
+      if (!open) return (
+        <div className="min-h-screen flex items-center justify-center">
+          <button
+            onClick={() => { setOpen(true); setVaccineValue(""); setScanning(false); setScanPickerOpen(false); setShowQR(false); setShowCamera(false); setCameraError(false); setFocused(true); }}
+            className="px-4 py-2 bg-vds-btn-primary text-white text-sm font-semibold rounded hover:opacity-90 transition-opacity"
+          >
+            Open Document Vaccine
+          </button>
+        </div>
+      );
+
+      return (
+        <div className="min-h-screen flex items-center justify-center p-6">
+          <div className="fixed inset-0 bg-black/40" onClick={() => setOpen(false)} />
+
+          {/* Dialog */}
+          <div className={`relative flex flex-col bg-white rounded border-l-4 shadow-dialog w-[596px] max-h-[90vh] overflow-hidden transition-colors ${scanning || scanPickerOpen || showQR || showCamera ? "border-vds-btn-primary" : "border-vds-smoke-regular"}`}>
+
+            {/* ── Header ── */}
+            <div className="flex items-center gap-2 pl-4 pr-1 py-2 bg-vds-smoke-lighter border-b border-vds-smoke-light flex-shrink-0">
+              <h1 className="flex-1 text-[18px] font-semibold text-vds-text-secondary leading-[1.6]">
+                Document Vaccine
+              </h1>
+              <button className="flex items-center gap-1 px-1.5 py-1.5 rounded hover:bg-black/5 transition-colors text-vds-ghost-color">
+                <PlusIcon />
+                <span className="text-[12px] font-semibold leading-none whitespace-nowrap">Add Another Vaccine</span>
+              </button>
+              <button
+                onClick={() => setOpen(false)}
+                className="p-1.5 rounded text-vds-text-secondary hover:bg-black/5 transition-colors"
+              >
+                <CloseIcon />
+              </button>
+            </div>
+
+            {/* ── Scrollable body ── */}
+            <div className="flex-1 overflow-y-auto scrollbar-thin">
+
+              {/* VACCINE section */}
+              <div className="flex gap-2 items-start pl-4 pr-6 py-2 border-b border-vds-border">
+                <SxnLabel>Vaccine</SxnLabel>
+                <div className="flex flex-col gap-1 py-1">
+
+                  {/* Segmented radio */}
+                  <div className="flex items-center bg-vds-surface-100 rounded-full self-start">
+                    {[
+                      { id: "new",        label: "New Record" },
+                      { id: "historical", label: "Historical Record" },
+                      { id: "declined",   label: "Patient Declined" },
+                    ].map(opt => (
+                      <button
+                        key={opt.id}
+                        onClick={() => setTab(opt.id)}
+                        className={`px-3 py-[7px] rounded-full text-[14px] leading-[1.6] transition-colors whitespace-nowrap ${
+                          tab === opt.id
+                            ? "bg-white border border-vds-action-link text-vds-action-link"
+                            : "text-vds-text-primary"
+                        }`}
+                      >
+                        {opt.label}
+                      </button>
+                    ))}
+                  </div>
+
+                  {/* Vaccine contained input */}
+                  <div className="mt-0.5">
+                    <div className={`flex items-center w-[373px] rounded px-2 gap-1 transition-colors ${
+                      scanning
+                        ? "border border-[#cdd7db] bg-white pt-[5px] pb-[2px]"
+                        : inputActive
+                          ? "border-2 border-vds-focus-border bg-vds-input-surface pt-[5px] pb-[3px]"
+                          : "border border-[#cdd7db] bg-white pt-[5px] pb-[3px]"
+                    }`}>
+
+                      {/* Label + input column */}
+                      <div className="flex flex-col flex-1 min-w-0 cursor-text">
+                        <div className="flex gap-0.5">
+                          <span className={`text-[11px] leading-none font-normal ${
+                            inputActive && !scanning ? "text-vds-navy-500" : "text-[rgba(0,24,38,0.58)]"
+                          }`}>Vaccine</span>
+                          <span className={`text-[11px] leading-none ${
+                            inputActive && !scanning ? "text-vds-navy-500" : "text-[rgba(0,24,38,0.58)]"
+                          }`}>*</span>
+                        </div>
+
+                        <div className="mt-0.5 min-h-[20px]">
+                          {scanning ? (
+                            <span className="flex items-center gap-1 leading-[1.4]">
+                              <svg width="6" height="6" viewBox="0 0 6 6" className="shrink-0">
+                                <circle cx="3" cy="3" r="3" fill="#0394ce" />
+                              </svg>
+                              <span className="text-[14px] italic text-vds-text-primary">Listening for scan...</span>
+                            </span>
+                          ) : (
+                            <input
+                              ref={inputRef}
+                              className="text-[14px] text-vds-text-primary placeholder:italic placeholder:text-vds-text-muted leading-[1.4] bg-transparent outline-none w-full"
+                              placeholder="Start typing or click to scan"
+                              value={vaccineValue}
+                              onChange={e => setVaccineValue(e.target.value)}
+                              onFocus={() => setFocused(true)}
+                              onBlur={() => setFocused(false)}
+                            />
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Divider (visible only when not scanning) + action button */}
+                      {scanning ? null : <div className="w-px h-7 bg-vds-border mx-1 shrink-0" />}
+                      {scanning ? (
+                        <button
+                          onClick={handleCancelScan}
+                          className="flex items-center gap-1 px-1 py-[4.5px] rounded text-vds-ghost-color whitespace-nowrap hover:bg-black/5 transition-colors shrink-0"
+                        >
+                          <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.5">
+                            <path strokeLinecap="round" d="M10.5 3.5l-7 7M3.5 3.5l7 7" />
+                          </svg>
+                          <span className="text-[11px] font-semibold leading-none">Cancel</span>
+                        </button>
+                      ) : (
+                        <button
+                          onClick={handleScanClick}
+                          className="flex items-center gap-1 text-[12px] font-semibold text-vds-ghost-color whitespace-nowrap hover:text-vds-text-secondary transition-colors shrink-0"
+                        >
+                          <BarcodeIcon />
+                          Scan
+                          <SmallChevronIcon open={scanPickerOpen} />
+                        </button>
+                      )}
+                    </div>
+
+                    {/* Scan method picker */}
+                    {scanPickerOpen && !scanning && (
+                      <div className="mt-1.5 w-[373px] border border-vds-border-300 rounded bg-white overflow-hidden">
+                        {SCAN_METHODS.map((method, i) => (
+                          <React.Fragment key={method.id}>
+                            {i > 0 && <div className="border-t border-vds-border" />}
+                            <button
+                              onClick={() => handleSelectScanMethod(method)}
+                              className="w-full flex items-center gap-3 px-3 py-2.5 hover:bg-vds-surface-100 transition-colors text-left"
+                            >
+                              <span className="shrink-0 text-vds-text-icon-muted">
+                                <method.Icon />
+                              </span>
+                              <span className="flex flex-col">
+                                <span className="text-[13px] font-semibold text-vds-text-primary leading-[1.4]">{method.label}</span>
+                                <span className="text-[11px] text-vds-text-muted leading-[1.4]">{method.subtitle}</span>
+                              </span>
+                            </button>
+                          </React.Fragment>
+                        ))}
+                      </div>
+                    )}
+
+                    {/* Mobile QR code view */}
+                    {showQR && (
+                      <div className="mt-1.5 w-[373px] border border-vds-border-300 rounded bg-white overflow-hidden">
+                        <div className="px-3 pt-2.5 pb-0">
+                          <button
+                            onClick={() => { setShowQR(false); setScanPickerOpen(true); }}
+                            className="flex items-center gap-1 text-[11px] text-vds-text-muted hover:text-vds-text-secondary transition-colors"
+                          >
+                            <svg className="w-3 h-3" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.5">
+                              <path strokeLinecap="round" strokeLinejoin="round" d="M7.5 2L3.5 6l4 4" />
+                            </svg>
+                            Change method
+                          </button>
+                        </div>
+                        <div className="flex flex-col items-center px-3 pt-3 pb-4 gap-3">
+                          <div ref={qrRef} className="rounded overflow-hidden" />
+                          <div className="flex items-center gap-1.5">
+                            <span className="w-1.5 h-1.5 rounded-full bg-vds-text-icon-muted animate-pulse shrink-0" />
+                            <span className="text-[11px] text-vds-text-muted">Waiting for scan…</span>
+                          </div>
+                          <button
+                            onClick={() => handleQRSuccess('Moderna COVID-19 mRNA-1273')}
+                            className="text-[10px] text-vds-border-300 hover:text-vds-text-muted transition-colors mt-0.5"
+                          >
+                            simulate scan ↵
+                          </button>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Computer camera viewfinder */}
+                    {showCamera && (
+                      <div className="mt-1.5 w-[373px] border border-vds-border-300 rounded bg-white overflow-hidden">
+                        {cameraError ? (
+                          <div className="px-4 py-4 flex flex-col gap-2">
+                            <p className="text-[12px] text-vds-text-muted">Camera access was denied or unavailable.</p>
+                            <button
+                              onClick={handleCameraBack}
+                              className="flex items-center gap-1 text-[11px] text-vds-text-muted hover:text-vds-text-secondary transition-colors self-start"
+                            >
+                              <svg className="w-3 h-3" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.5">
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M7.5 2L3.5 6l4 4" />
+                              </svg>
+                              Change method
+                            </button>
+                          </div>
+                        ) : (
+                          <>
+                            {/* Video feed with reticle */}
+                            <div className="relative w-full h-[180px] overflow-hidden bg-black">
+                              <video
+                                ref={videoRef}
+                                className="w-full h-full object-cover"
+                                autoPlay
+                                muted
+                                playsInline
+                              />
+                              <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                                <div className="w-44 h-[72px] rounded-lg border-2 border-white/70"
+                                  style={{ boxShadow: '0 0 0 9999px rgba(0,0,0,0.35)' }} />
+                              </div>
+                            </div>
+                            {/* Footer */}
+                            <div className="px-3 py-2.5 flex flex-col gap-1">
+                              <span className="text-[11px] text-vds-text-muted">Point camera at barcode…</span>
+                              <button
+                                onClick={handleCameraBack}
+                                className="flex items-center gap-1 text-[11px] text-vds-text-muted hover:text-vds-text-secondary transition-colors self-start"
+                              >
+                                <svg className="w-3 h-3" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.5">
+                                  <path strokeLinecap="round" strokeLinejoin="round" d="M7.5 2L3.5 6l4 4" />
+                                </svg>
+                                Change method
+                              </button>
+                            </div>
+                          </>
+                        )}
+                      </div>
+                    )}
+                  </div>
+
+                </div>
+              </div>
+
+              {/* REGISTRY section */}
+              <div className="flex gap-2 items-start pl-4 pr-6 py-2 border-b border-vds-smoke-light">
+                <SxnLabel>Registry</SxnLabel>
+                <div className="flex flex-col gap-0.5 flex-1 pt-1">
+                  <div className="flex items-center gap-2">
+                    <GhostSelect label="Send to immunization registry?" value="Yes" width="184px" />
+                    <div className="flex items-center gap-1">
+                      <GhostSelect label="Registry Recall" value="No reminder/recall" required width="164px" />
+                      <InfoIcon cls="w-4 h-4 text-vds-text-icon-muted shrink-0" />
+                    </div>
+                  </div>
+                  <FieldDivider />
+                  <GhostSelect label="Where should the record be sent?" value={null} required width="full" />
+                  <FieldDivider />
+                  <GhostSelect label="Patient consents to sharing Personally Identifiable Information?" value={null} required width="full" />
+                  <FieldDivider />
+                  <div className="flex items-center gap-1 py-1">
+                    <label className="flex items-center gap-1.5 cursor-pointer">
+                      <div className="w-[18px] h-[18px] rounded border border-vds-checkbox-border bg-vds-checkbox-surface flex-shrink-0" />
+                      <span className="text-[14px] text-vds-text-primary leading-[1.6]">Keep this confidential</span>
+                    </label>
+                    <InfoIcon cls="w-[14px] h-[14px] text-vds-text-icon-muted" />
+                  </div>
+                </div>
+              </div>
+
+              {/* FUNDING section */}
+              <div className="flex gap-2 items-start pl-4 pr-6 py-2 border-b border-vds-smoke-light">
+                <SxnLabel>Funding</SxnLabel>
+                <div className="flex flex-col gap-0.5 flex-1 pt-1">
+                  <GhostSelect label="Program" value={null} required width="full" />
+                  <FieldDivider />
+                  <GhostSelect label="Funded by" value={null} required width="full" />
+                </div>
+              </div>
+
+              {/* ADMIN DETAILS section */}
+              <div className="flex gap-2 items-start pl-4 pr-6 py-2 border-b border-vds-smoke-light">
+                <SxnLabel>Admin Details</SxnLabel>
+                <div className="flex flex-col gap-0.5 flex-1 pt-1">
+                  <div className="flex gap-4">
+                    <GhostInput label="Ordered by" value="Beverly Crusher, MD" required />
+                    <GhostInput label="Given by" value="Lisa Simpson, NP" required />
+                  </div>
+                  <FieldDivider />
+                  <div className="flex gap-4">
+                    <GhostInput label="Date" value="01/13/2026" required />
+                    <GhostInput label="Time" value="10:30AM" required />
+                  </div>
+                  <FieldDivider />
+                  <div className="flex gap-4">
+                    <GhostSelect label="Method" value={null} required width="180px" />
+                    <GhostSelect label="Injection Site" value={null} required width="180px" />
+                  </div>
+                  <FieldDivider />
+                  <div className="flex items-center justify-between">
+                    <GhostSelect label="VIS" value={null} required width="180px" />
+                    <button className="p-1 text-vds-text-icon-muted hover:text-vds-text-secondary transition-colors">
+                      <PrintIcon />
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              {/* VACCINE DETAILS section */}
+              <div className="flex gap-2 items-start pl-4 pr-6 py-2">
+                <SxnLabel>Vaccine Details</SxnLabel>
+                <div className="flex flex-col gap-0.5 flex-1 pt-1">
+                  <div className="flex gap-4 items-start">
+                    <GhostInput label="Dose" value={null} required />
+                    <GhostSelect label="Unit" value={null} required width="100px" />
+                    <GhostInput label="In series" value={null} />
+                  </div>
+                  <FieldDivider />
+                  <div className="flex gap-4 items-start">
+                    <GhostSelect label="NDC" value={null} required width="120px" />
+                    <GhostInput label="Lot #" value={null} required />
+                    <GhostInput label="Expiration Date" value={null} required />
+                  </div>
+                  <FieldDivider />
+                  <GhostSelect label="Manufacturer" value={null} width="200px" />
+                  <FieldDivider />
+                  <div className="flex flex-col pt-0.5 pb-1">
+                    <span className="text-[10px] text-vds-input-label leading-none mb-1">Notes</span>
+                    <span className="text-[14px] italic text-vds-text-muted leading-[1.4]">
+                      How the patient tolerated the injection, etc...
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+            </div>
+
+            {/* ── Footer ── */}
+            <div className="flex items-center gap-2 px-4 py-3 border-t border-vds-border flex-shrink-0">
+              <button className="px-4 py-[9px] text-[14px] font-semibold text-white bg-vds-btn-primary rounded hover:opacity-90 transition-opacity leading-none whitespace-nowrap">
+                Save &amp; Submit to the Registry
+              </button>
+              <button className="px-4 py-[9px] text-[14px] font-semibold text-vds-btn-default-fg bg-vds-btn-default-bg rounded hover:opacity-90 transition-opacity leading-none">
+                Discard
+              </button>
+            </div>
+
+          </div>
+        </div>
+      );
+    }
+
+    ReactDOM.createRoot(document.getElementById("root")).render(<DocumentVaccineDialog />);
+  </script>
+</body>
+</html>
