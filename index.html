@@ -145,7 +145,7 @@
           <div className="flex flex-col">
             <div className="flex gap-0.5 items-baseline">
               <span className="text-[10px] text-vds-input-label leading-none whitespace-nowrap">{label}</span>
-              {required && <span className="text-[11px] text-vds-input-label leading-none">*</span>}
+              {required && <span className="text-[10px] text-vds-input-label leading-none">*</span>}
             </div>
             <div className="flex items-center gap-1 border-b border-transparent">
               {value
@@ -164,7 +164,7 @@
         <div className="flex flex-col cursor-text">
           <div className="flex gap-0.5 items-baseline">
             <span className="text-[10px] text-vds-input-label leading-none">{label}</span>
-            {required && <span className="text-[11px] text-vds-input-label leading-none">*</span>}
+            {required && <span className="text-[10px] text-vds-input-label leading-none">*</span>}
           </div>
           <div className="border-b border-transparent">
             {value
@@ -317,6 +317,8 @@
       }, [showCamera]);
 
       const inputActive = focused || vaccineValue.length > 0;
+      const isHistorical = tab === "historical";
+      const isDeclined  = tab === "declined";
 
       if (!open) return (
         <div className="min-h-screen flex items-center justify-center">
@@ -334,10 +336,10 @@
           <div className="fixed inset-0 bg-black/40" onClick={() => setOpen(false)} />
 
           {/* Dialog */}
-          <div className={`relative flex flex-col bg-white rounded border-l-4 shadow-dialog w-[596px] max-h-[90vh] overflow-hidden transition-colors ${scanning || scanPickerOpen || showQR || showCamera ? "border-vds-btn-primary" : "border-vds-smoke-regular"}`}>
+          <div className={`relative flex flex-col bg-white rounded border-l-4 shadow-dialog w-[596px] max-h-[90vh] overflow-hidden transition-colors ${scanning ? "border-vds-btn-primary" : "border-vds-smoke-regular"}`}>
 
             {/* ── Header ── */}
-            <div className="flex items-center gap-2 pl-4 pr-1 py-2 bg-vds-smoke-lighter border-b border-vds-smoke-light flex-shrink-0">
+            <div className={`flex items-center gap-2 pl-4 pr-1 py-2 border-b border-vds-smoke-light flex-shrink-0 transition-colors ${scanning ? "bg-[#EDF6FF]" : "bg-vds-smoke-lighter"}`}>
               <h1 className="flex-1 text-[18px] font-semibold text-vds-text-secondary leading-[1.6]">
                 Document Vaccine
               </h1>
@@ -425,9 +427,9 @@
                         </div>
                       </div>
 
-                      {/* Divider (visible only when not scanning) + action button */}
-                      {scanning ? null : <div className="w-px h-7 bg-vds-border mx-1 shrink-0" />}
-                      {scanning ? (
+                      {/* Divider + action button — new record only */}
+                      {tab === "new" && (scanning ? null : <div className="w-px h-7 bg-vds-border mx-1 shrink-0" />)}
+                      {tab === "new" && (scanning ? (
                         <button
                           onClick={handleCancelScan}
                           className="flex items-center gap-1 px-1 py-[4.5px] rounded text-vds-ghost-color whitespace-nowrap hover:bg-black/5 transition-colors shrink-0"
@@ -446,11 +448,11 @@
                           Scan
                           <SmallChevronIcon open={scanPickerOpen} />
                         </button>
-                      )}
+                      ))}
                     </div>
 
                     {/* Scan method picker */}
-                    {scanPickerOpen && !scanning && (
+                    {tab === "new" && scanPickerOpen && !scanning && (
                       <div className="mt-1.5 w-[373px] border border-vds-border-300 rounded bg-white overflow-hidden">
                         {SCAN_METHODS.map((method, i) => (
                           <React.Fragment key={method.id}>
@@ -473,7 +475,7 @@
                     )}
 
                     {/* Mobile QR code view */}
-                    {showQR && (
+                    {tab === "new" && showQR && (
                       <div className="mt-1.5 w-[373px] border border-vds-border-300 rounded bg-white overflow-hidden">
                         <div className="px-3 pt-2.5 pb-0">
                           <button
@@ -503,7 +505,7 @@
                     )}
 
                     {/* Computer camera viewfinder */}
-                    {showCamera && (
+                    {tab === "new" && showCamera && (
                       <div className="mt-1.5 w-[373px] border border-vds-border-300 rounded bg-white overflow-hidden">
                         {cameraError ? (
                           <div className="px-4 py-4 flex flex-col gap-2">
@@ -561,17 +563,18 @@
                 <SxnLabel>Registry</SxnLabel>
                 <div className="flex flex-col gap-0.5 flex-1 pt-1">
                   <div className="flex items-center gap-2">
-                    <GhostSelect label="Send to immunization registry?" value="Yes" width="184px" />
+                    <GhostSelect label="Send to immunization registry?" value={isHistorical ? null : "Yes"} width="184px" />
                     <div className="flex items-center gap-1">
-                      <GhostSelect label="Registry Recall" value="No reminder/recall" required width="164px" />
+                      <GhostSelect label="Registry Recall" value={isHistorical ? null : "No reminder/recall"} required={tab === "new"} width="164px" />
                       <InfoIcon cls="w-4 h-4 text-vds-text-icon-muted shrink-0" />
                     </div>
                   </div>
                   <FieldDivider />
-                  <GhostSelect label="Where should the record be sent?" value={null} required width="full" />
+                  <GhostSelect label="Where should the record be sent?" value={null} required={tab === "new"} width="full" />
                   <FieldDivider />
-                  <GhostSelect label="Patient consents to sharing Personally Identifiable Information?" value={null} required width="full" />
+                  <GhostSelect label="Patient consents to sharing Personally Identifiable Information?" value={null} required={tab === "new"} width="full" />
                   <FieldDivider />
+                  {isHistorical && <><GhostSelect label="Source" value="Source unspecified" width="full" /><FieldDivider /></>}
                   <div className="flex items-center gap-1 py-1">
                     <label className="flex items-center gap-1.5 cursor-pointer">
                       <div className="w-[18px] h-[18px] rounded border border-vds-checkbox-border bg-vds-checkbox-surface flex-shrink-0" />
@@ -582,13 +585,15 @@
                 </div>
               </div>
 
+              {!isDeclined && <>
+
               {/* FUNDING section */}
               <div className="flex gap-2 items-start pl-4 pr-6 py-2 border-b border-vds-smoke-light">
                 <SxnLabel>Funding</SxnLabel>
                 <div className="flex flex-col gap-0.5 flex-1 pt-1">
-                  <GhostSelect label="Program" value={null} required width="full" />
+                  <GhostSelect label="Program" value={null} required={tab === "new"} width="full" />
                   <FieldDivider />
-                  <GhostSelect label="Funded by" value={null} required width="full" />
+                  <GhostSelect label="Funded by" value={null} required={tab === "new"} width="full" />
                 </div>
               </div>
 
@@ -597,22 +602,22 @@
                 <SxnLabel>Admin Details</SxnLabel>
                 <div className="flex flex-col gap-0.5 flex-1 pt-1">
                   <div className="flex gap-4">
-                    <GhostInput label="Ordered by" value="Beverly Crusher, MD" required />
-                    <GhostInput label="Given by" value="Lisa Simpson, NP" required />
+                    <GhostInput label="Ordered by" value={isHistorical ? null : "Beverly Crusher, MD"} required={tab === "new"} />
+                    <GhostInput label="Given by" value={isHistorical ? null : "Lisa Simpson, NP"} required={tab === "new"} />
                   </div>
                   <FieldDivider />
                   <div className="flex gap-4">
-                    <GhostInput label="Date" value="01/13/2026" required />
-                    <GhostInput label="Time" value="10:30AM" required />
+                    <GhostInput label="Date" value={isHistorical ? null : "01/13/2026"} required />
+                    <GhostInput label="Time" value={isHistorical ? null : "10:30AM"} required={tab === "new"} />
                   </div>
                   <FieldDivider />
                   <div className="flex gap-4">
-                    <GhostSelect label="Method" value={null} required width="180px" />
-                    <GhostSelect label="Injection Site" value={null} required width="180px" />
+                    <GhostSelect label="Method" value={null} required={tab === "new"} width="180px" />
+                    <GhostSelect label="Injection Site" value={null} required={tab === "new"} width="180px" />
                   </div>
                   <FieldDivider />
                   <div className="flex items-center justify-between">
-                    <GhostSelect label="VIS" value={null} required width="180px" />
+                    <GhostSelect label="VIS" value={null} required={tab === "new"} width="180px" />
                     <button className="p-1 text-vds-text-icon-muted hover:text-vds-text-secondary transition-colors">
                       <PrintIcon />
                     </button>
@@ -625,15 +630,15 @@
                 <SxnLabel>Vaccine Details</SxnLabel>
                 <div className="flex flex-col gap-0.5 flex-1 pt-1">
                   <div className="flex gap-4 items-start">
-                    <GhostInput label="Dose" value={null} required />
-                    <GhostSelect label="Unit" value={null} required width="100px" />
+                    <GhostInput label="Dose" value={null} required={tab === "new"} />
+                    <GhostSelect label="Unit" value={null} required={tab === "new"} width="100px" />
                     <GhostInput label="In series" value={null} />
                   </div>
                   <FieldDivider />
                   <div className="flex gap-4 items-start">
-                    <GhostSelect label="NDC" value={null} required width="120px" />
-                    <GhostInput label="Lot #" value={null} required />
-                    <GhostInput label="Expiration Date" value={null} required />
+                    <GhostSelect label="NDC" value={null} required={tab === "new"} width="120px" />
+                    <GhostInput label="Lot #" value={null} required={tab === "new"} />
+                    <GhostInput label="Expiration Date" value={null} required={tab === "new"} />
                   </div>
                   <FieldDivider />
                   <GhostSelect label="Manufacturer" value={null} width="200px" />
@@ -646,6 +651,28 @@
                   </div>
                 </div>
               </div>
+
+              </>}
+
+              {/* DECLINED section */}
+              {isDeclined && (
+              <div className="flex gap-2 items-start pl-4 pr-6 py-2">
+                <SxnLabel>Declined</SxnLabel>
+                <div className="flex flex-col gap-0.5 flex-1 pt-1">
+                  <GhostInput label="Declined date" value={null} required />
+                  <FieldDivider />
+                  <GhostSelect label="Declined reason" value={null} required width="full" />
+                  <FieldDivider />
+                  <div className="flex flex-col pt-0.5 pb-1">
+                    <span className="text-[10px] text-vds-input-label leading-none mb-1">Notes</span>
+                    <span className="text-[14px] italic text-vds-text-muted leading-[1.4]">
+                      Additional notes about the declination...
+                    </span>
+                  </div>
+                </div>
+              </div>
+              )}
+
 
             </div>
 
