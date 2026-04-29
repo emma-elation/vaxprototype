@@ -8,8 +8,6 @@
   <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
   <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
   <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/@zxing/browser@0.1.4/umd/index.min.js"></script>
   <link href="https://fonts.googleapis.com/css2?family=Open+Sans:ital,wght@0,400;0,600;0,700;1,400&display=swap" rel="stylesheet" />
   <script>
     tailwind.config = {
@@ -44,6 +42,7 @@
           },
           boxShadow: {
             dialog: '0px 0px 1px 0px rgba(9,30,66,0.72), 0px 4px 16px 0px rgba(9,30,66,0.16), 0px 8px 32px 0px rgba(9,30,66,0.24)',
+            dropdown: '0px 1px 2px 0px rgba(9,30,66,0.12), 0px 4px 12px 0px rgba(9,30,66,0.14)',
           }
         }
       }
@@ -65,6 +64,16 @@
     const ChevronIcon = ({ cls = "w-5 h-5" }) => (
       <svg className={cls} viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.5">
         <path strokeLinecap="round" strokeLinejoin="round" d="M6 8l4 4 4-4" />
+      </svg>
+    );
+    const SmallChevronIcon = ({ open }) => (
+      <svg className={`w-3 h-3 transition-transform duration-150 ${open ? "rotate-180" : ""}`} viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.5">
+        <path strokeLinecap="round" strokeLinejoin="round" d="M2.5 4.5l3.5 3.5 3.5-3.5" />
+      </svg>
+    );
+    const CheckIcon = () => (
+      <svg className="w-3.5 h-3.5 text-vds-action-link shrink-0" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="2">
+        <path strokeLinecap="round" strokeLinejoin="round" d="M2.5 7l3 3L11.5 3.5" />
       </svg>
     );
     const CloseIcon = () => (
@@ -101,30 +110,31 @@
         <path strokeLinecap="round" d="M14 14h2v2h-2zM18 14h3M14 18h3M18 18h3v3M18 21v-3" />
       </svg>
     );
-    const ComputerIcon = () => (
-      <svg className="w-5 h-5" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.5">
+    const CameraIcon = ({ cls = "w-[14px] h-[14px]" }) => (
+      <svg className={cls} viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.5">
         <rect x="2" y="3" width="16" height="11" rx="1.5" />
         <path strokeLinecap="round" d="M7 17h6" />
         <path strokeLinecap="round" d="M10 14v3" />
       </svg>
     );
-    const PhoneIcon = () => (
-      <svg className="w-5 h-5" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.5">
-        <rect x="5.5" y="2" width="9" height="16" rx="1.5" />
-        <circle cx="10" cy="15.5" r=".75" fill="currentColor" stroke="none" />
-        <path strokeLinecap="round" d="M8 4h4" />
-      </svg>
-    );
-    const SmallChevronIcon = ({ open }) => (
-      <svg className={`w-3 h-3 transition-transform duration-150 ${open ? "rotate-180" : ""}`} viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.5">
-        <path strokeLinecap="round" strokeLinejoin="round" d="M2.5 4.5l3.5 3.5 3.5-3.5" />
-      </svg>
-    );
 
-    const SCAN_METHODS = [
-      { id: "physical", label: "Physical scanner", subtitle: "USB or Bluetooth device",  Icon: () => <BarcodeIcon cls="w-5 h-5" /> },
-      { id: "webcam",   label: "Computer camera",  subtitle: "Built-in or USB webcam",   Icon: ComputerIcon },
-      { id: "mobile",   label: "Mobile camera",    subtitle: "Scan QR to use phone",      Icon: PhoneIcon },
+    const SCAN_OPTIONS = [
+      {
+        id: "handheld",
+        label: "Handheld scanner",
+        sub: "Click here, then scan with your device",
+        btnLabel: "Scan with handheld",
+        Icon: () => <BarcodeIcon cls="w-[14px] h-[14px] text-vds-text-icon-muted" />,
+        DropdownIcon: () => <BarcodeIcon cls="w-4 h-4 text-vds-text-icon-muted" />,
+      },
+      {
+        id: "camera",
+        label: "Camera scan",
+        sub: "Use your computer's webcam",
+        btnLabel: "Scan with camera",
+        Icon: () => <CameraIcon cls="w-[14px] h-[14px] text-vds-text-icon-muted" />,
+        DropdownIcon: () => <CameraIcon cls="w-4 h-4 text-vds-text-icon-muted" />,
+      },
     ];
 
     /* ── Sub-components ─────────────────────────────────────── */
@@ -185,61 +195,58 @@
       const [open, setOpen] = useState(true);
       const [tab, setTab] = useState("new");
       const [scanning, setScanning] = useState(false);
-      const [scanPickerOpen, setScanPickerOpen] = useState(false);
-      const [showQR, setShowQR] = useState(false);
-      const [showCamera, setShowCamera] = useState(false);
-      const [cameraError, setCameraError] = useState(false);
+      const [showCameraDialog, setShowCameraDialog] = useState(false);
       const [vaccineValue, setVaccineValue] = useState("");
       const [focused, setFocused] = useState(false);
+      const [preferredScanMethod, setPreferredScanMethod] = useState(
+        () => localStorage.getItem("preferredScanMethod")
+      );
+      const [dropdownOpen, setDropdownOpen] = useState(false);
       const inputRef = useRef(null);
-      const qrRef = useRef(null);
-      const videoRef = useRef(null);
-      const scanControlsRef = useRef(null);
+      const scanBtnRef = useRef(null);
 
       useEffect(() => {
-        if (open && inputRef.current) {
-          inputRef.current.focus();
-        }
+        if (open && inputRef.current) inputRef.current.focus();
       }, [open]);
 
-      function handleScanClick() {
-        setScanPickerOpen(prev => !prev);
-      }
-
-      function handleSelectScanMethod(method) {
-        setScanPickerOpen(false);
-        console.log('Selected scan method:', method.id);
-        if (method.id === 'physical') {
-          if (inputRef.current) inputRef.current.blur();
-          setFocused(false);
-          setScanning(true);
-        } else if (method.id === 'webcam') {
-          setShowCamera(true);
-          setCameraError(false);
-        } else if (method.id === 'mobile') {
-          setShowQR(true);
+      useEffect(() => {
+        if (!dropdownOpen) return;
+        function onClickOutside(e) {
+          if (scanBtnRef.current && !scanBtnRef.current.contains(e.target)) {
+            setDropdownOpen(false);
+          }
         }
+        document.addEventListener("mousedown", onClickOutside);
+        return () => document.removeEventListener("mousedown", onClickOutside);
+      }, [dropdownOpen]);
+
+      function handlePhysicalScan() {
+        if (inputRef.current) inputRef.current.blur();
+        setFocused(false);
+        setScanning(true);
       }
 
-      function handleCameraBack() {
-        setShowCamera(false);
-        setCameraError(false);
-        setScanPickerOpen(true);
+      function handleWebcamScan() {
+        setShowCameraDialog(true);
       }
 
-      function handleQRSuccess(value) {
-        setShowQR(false);
-        setVaccineValue(value);
-        setTimeout(() => { if (inputRef.current) { inputRef.current.focus(); setFocused(true); } }, 0);
+      function handleDirectScan() {
+        if (preferredScanMethod === "handheld") handlePhysicalScan();
+        else handleWebcamScan();
+      }
+
+      function handleSelectMethod(id) {
+        localStorage.setItem("preferredScanMethod", id);
+        setPreferredScanMethod(id);
+        setDropdownOpen(false);
+        if (id === "handheld") handlePhysicalScan();
+        else handleWebcamScan();
       }
 
       function handleCancelScan() {
         setScanning(false);
         setTimeout(() => {
-          if (inputRef.current) {
-            inputRef.current.focus();
-            setFocused(true);
-          }
+          if (inputRef.current) { inputRef.current.focus(); setFocused(true); }
         }, 0);
       }
 
@@ -249,11 +256,7 @@
         let timer = null;
         function onKey(e) {
           if (e.key === "Enter") {
-            if (buffer) {
-              setVaccineValue(buffer);
-              setScanning(false);
-              setFocused(true);
-            }
+            if (buffer) { setVaccineValue(buffer); setScanning(false); setFocused(true); }
             buffer = "";
           } else if (e.key.length === 1) {
             buffer += e.key;
@@ -265,65 +268,15 @@
         return () => { window.removeEventListener("keydown", onKey); clearTimeout(timer); };
       }, [scanning]);
 
-      useEffect(() => {
-        if (showQR && qrRef.current) {
-          qrRef.current.innerHTML = '';
-          new QRCode(qrRef.current, {
-            text: 'https://elation.health/vax-scan/demo',
-            width: 160,
-            height: 160,
-            colorDark: '#142125',
-            colorLight: '#ffffff',
-          });
-        }
-      }, [showQR]);
-
-      useEffect(() => {
-        if (!showCamera) {
-          if (scanControlsRef.current) { scanControlsRef.current.stop(); scanControlsRef.current = null; }
-          return;
-        }
-        let stopped = false;
-        const start = async () => {
-          if (!videoRef.current) return;
-          try {
-            const reader = new ZXingBrowser.BrowserMultiFormatReader();
-            const controls = await reader.decodeFromVideoDevice(
-              undefined,
-              videoRef.current,
-              (result) => {
-                if (result && !stopped) {
-                  stopped = true;
-                  controls.stop();
-                  scanControlsRef.current = null;
-                  setShowCamera(false);
-                  setVaccineValue(result.getText());
-                  setTimeout(() => { if (inputRef.current) { inputRef.current.focus(); setFocused(true); } }, 100);
-                }
-              }
-            );
-            if (stopped) { controls.stop(); return; }
-            scanControlsRef.current = controls;
-          } catch {
-            if (!stopped) setCameraError(true);
-          }
-        };
-        const t = setTimeout(start, 50);
-        return () => {
-          stopped = true;
-          clearTimeout(t);
-          if (scanControlsRef.current) { scanControlsRef.current.stop(); scanControlsRef.current = null; }
-        };
-      }, [showCamera]);
-
       const inputActive = focused || vaccineValue.length > 0;
       const isHistorical = tab === "historical";
       const isDeclined  = tab === "declined";
+      const activeOption = SCAN_OPTIONS.find(o => o.id === preferredScanMethod);
 
       if (!open) return (
         <div className="min-h-screen flex items-center justify-center">
           <button
-            onClick={() => { setOpen(true); setVaccineValue(""); setScanning(false); setScanPickerOpen(false); setShowQR(false); setShowCamera(false); setCameraError(false); setFocused(true); }}
+            onClick={() => { setOpen(true); setVaccineValue(""); setScanning(false); setShowCameraDialog(false); setFocused(true); }}
             className="px-4 py-2 bg-vds-btn-primary text-white text-sm font-semibold rounded hover:opacity-90 transition-opacity"
           >
             Open Document Vaccine
@@ -361,7 +314,7 @@
               {/* VACCINE section */}
               <div className="flex gap-2 items-start pl-4 pr-6 py-2 border-b border-vds-border">
                 <SxnLabel>Vaccine</SxnLabel>
-                <div className="flex flex-col gap-1 py-1">
+                <div className="flex flex-col gap-1 py-1 flex-1">
 
                   {/* Segmented radio */}
                   <div className="flex items-center bg-vds-surface-100 rounded-full self-start">
@@ -386,7 +339,7 @@
 
                   {/* Vaccine contained input */}
                   <div className="mt-0.5">
-                    <div className={`flex items-center w-[373px] rounded px-2 gap-1 transition-colors ${
+                    <div className={`flex items-center w-full rounded px-2 gap-1 transition-colors ${
                       scanning
                         ? "border border-[#cdd7db] bg-white pt-[5px] pb-[2px]"
                         : inputActive
@@ -417,7 +370,7 @@
                             <input
                               ref={inputRef}
                               className="text-[14px] text-vds-text-primary placeholder:italic placeholder:text-vds-text-muted leading-[1.4] bg-transparent outline-none w-full"
-                              placeholder="Start typing or click to scan"
+                              placeholder="Start typing or scan a barcode"
                               value={vaccineValue}
                               onChange={e => setVaccineValue(e.target.value)}
                               onFocus={() => setFocused(true)}
@@ -427,132 +380,92 @@
                         </div>
                       </div>
 
-                      {/* Divider + action button — new record only */}
-                      {tab === "new" && (scanning ? null : <div className="w-px h-7 bg-vds-border mx-1 shrink-0" />)}
-                      {tab === "new" && (scanning ? (
-                        <button
-                          onClick={handleCancelScan}
-                          className="flex items-center gap-1 px-1 py-[4.5px] rounded text-vds-ghost-color whitespace-nowrap hover:bg-black/5 transition-colors shrink-0"
-                        >
-                          <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.5">
-                            <path strokeLinecap="round" d="M10.5 3.5l-7 7M3.5 3.5l7 7" />
-                          </svg>
-                          <span className="text-[11px] font-semibold leading-none">Cancel</span>
-                        </button>
-                      ) : (
-                        <button
-                          onClick={handleScanClick}
-                          className="flex items-center gap-1 text-[12px] font-semibold text-vds-ghost-color whitespace-nowrap hover:text-vds-text-secondary transition-colors shrink-0"
-                        >
-                          <BarcodeIcon />
-                          Scan
-                          <SmallChevronIcon open={scanPickerOpen} />
-                        </button>
-                      ))}
+                      {/* Inline scan button — new record only */}
+                      {tab === "new" && (
+                        <>
+                          <div className="w-px h-7 bg-vds-border mx-1 shrink-0" />
+                          {scanning ? (
+                            /* Cancel state */
+                            <button
+                              onClick={handleCancelScan}
+                              className="flex items-center gap-1 px-1 py-[4.5px] rounded text-vds-ghost-color whitespace-nowrap hover:bg-black/5 transition-colors shrink-0"
+                            >
+                              <svg width="12" height="12" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.5">
+                                <path strokeLinecap="round" d="M10.5 3.5l-7 7M3.5 3.5l7 7" />
+                              </svg>
+                              <span className="text-[11px] font-semibold leading-none">Cancel</span>
+                            </button>
+                          ) : (
+                            /* Split button + dropdown */
+                            <div className="relative shrink-0" ref={scanBtnRef}>
+
+                            {/* The trigger button */}
+                            <div className="inline-flex items-center gap-1">
+                              {activeOption ? (
+                                <>
+                                  {/* Main action — fires saved method */}
+                                  <button
+                                    onClick={handleDirectScan}
+                                    className="flex items-center gap-1 text-[12px] font-semibold text-vds-ghost-color whitespace-nowrap hover:text-vds-text-secondary transition-colors"
+                                  >
+                                    <activeOption.Icon />
+                                    <span>{activeOption.btnLabel}</span>
+                                  </button>
+                                  {/* Chevron — opens dropdown */}
+                                  <button
+                                    onClick={e => { e.stopPropagation(); setDropdownOpen(prev => !prev); }}
+                                    className="flex items-center text-vds-ghost-color hover:text-vds-text-secondary transition-colors"
+                                    aria-label="Choose scan method"
+                                  >
+                                    <SmallChevronIcon open={dropdownOpen} />
+                                  </button>
+                                </>
+                              ) : (
+                                /* No preference: unified button */
+                                <button
+                                  onClick={() => setDropdownOpen(prev => !prev)}
+                                  className="flex items-center gap-1 text-[12px] font-semibold text-vds-ghost-color whitespace-nowrap hover:text-vds-text-secondary transition-colors"
+                                >
+                                  <BarcodeIcon cls="w-[14px] h-[14px]" />
+                                  <span>Scan barcode</span>
+                                  <SmallChevronIcon open={dropdownOpen} />
+                                </button>
+                              )}
+                            </div>
+
+                            {/* Dropdown */}
+                            {dropdownOpen && (
+                              <div className="absolute top-full right-0 mt-1 w-[248px] bg-white border border-vds-border-300 rounded shadow-dropdown z-20 overflow-hidden">
+                                {SCAN_OPTIONS.map((opt, i) => {
+                                  const isActive = preferredScanMethod === opt.id;
+                                  return (
+                                    <React.Fragment key={opt.id}>
+                                      {i > 0 && <div className="border-t border-vds-border" />}
+                                      <button
+                                        onClick={() => handleSelectMethod(opt.id)}
+                                        className={`w-full flex items-start gap-2.5 px-3 py-2.5 text-left transition-colors ${isActive ? "bg-vds-surface-100" : "hover:bg-vds-surface-100"}`}
+                                      >
+                                        <span className="shrink-0 mt-0.5"><opt.DropdownIcon /></span>
+                                        <span className="flex flex-col flex-1 min-w-0">
+                                          <span className="text-[13px] font-semibold text-vds-text-primary leading-[1.4]">{opt.label}</span>
+                                          <span className="text-[11px] text-vds-text-muted leading-[1.4]">{opt.sub}</span>
+                                        </span>
+                                        {isActive && (
+                                          <span className="shrink-0 mt-0.5"><CheckIcon /></span>
+                                        )}
+                                      </button>
+                                    </React.Fragment>
+                                  );
+                                })}
+                              </div>
+                            )}
+
+                          </div>
+                        )}
+                      </>
+                    )}
                     </div>
 
-                    {/* Scan method picker */}
-                    {tab === "new" && scanPickerOpen && !scanning && (
-                      <div className="mt-1.5 w-[373px] border border-vds-border-300 rounded bg-white overflow-hidden">
-                        {SCAN_METHODS.map((method, i) => (
-                          <React.Fragment key={method.id}>
-                            {i > 0 && <div className="border-t border-vds-border" />}
-                            <button
-                              onClick={() => handleSelectScanMethod(method)}
-                              className="w-full flex items-center gap-3 px-3 py-2.5 hover:bg-vds-surface-100 transition-colors text-left"
-                            >
-                              <span className="shrink-0 text-vds-text-icon-muted">
-                                <method.Icon />
-                              </span>
-                              <span className="flex flex-col">
-                                <span className="text-[13px] font-semibold text-vds-text-primary leading-[1.4]">{method.label}</span>
-                                <span className="text-[11px] text-vds-text-muted leading-[1.4]">{method.subtitle}</span>
-                              </span>
-                            </button>
-                          </React.Fragment>
-                        ))}
-                      </div>
-                    )}
-
-                    {/* Mobile QR code view */}
-                    {tab === "new" && showQR && (
-                      <div className="mt-1.5 w-[373px] border border-vds-border-300 rounded bg-white overflow-hidden">
-                        <div className="px-3 pt-2.5 pb-0">
-                          <button
-                            onClick={() => { setShowQR(false); setScanPickerOpen(true); }}
-                            className="flex items-center gap-1 text-[11px] text-vds-text-muted hover:text-vds-text-secondary transition-colors"
-                          >
-                            <svg className="w-3 h-3" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.5">
-                              <path strokeLinecap="round" strokeLinejoin="round" d="M7.5 2L3.5 6l4 4" />
-                            </svg>
-                            Change method
-                          </button>
-                        </div>
-                        <div className="flex flex-col items-center px-3 pt-3 pb-4 gap-3">
-                          <div ref={qrRef} className="rounded overflow-hidden" />
-                          <div className="flex items-center gap-1.5">
-                            <span className="w-1.5 h-1.5 rounded-full bg-vds-text-icon-muted animate-pulse shrink-0" />
-                            <span className="text-[11px] text-vds-text-muted">Waiting for scan…</span>
-                          </div>
-                          <button
-                            onClick={() => handleQRSuccess('Moderna COVID-19 mRNA-1273')}
-                            className="text-[10px] text-vds-border-300 hover:text-vds-text-muted transition-colors mt-0.5"
-                          >
-                            simulate scan ↵
-                          </button>
-                        </div>
-                      </div>
-                    )}
-
-                    {/* Computer camera viewfinder */}
-                    {tab === "new" && showCamera && (
-                      <div className="mt-1.5 w-[373px] border border-vds-border-300 rounded bg-white overflow-hidden">
-                        {cameraError ? (
-                          <div className="px-4 py-4 flex flex-col gap-2">
-                            <p className="text-[12px] text-vds-text-muted">Camera access was denied or unavailable.</p>
-                            <button
-                              onClick={handleCameraBack}
-                              className="flex items-center gap-1 text-[11px] text-vds-text-muted hover:text-vds-text-secondary transition-colors self-start"
-                            >
-                              <svg className="w-3 h-3" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.5">
-                                <path strokeLinecap="round" strokeLinejoin="round" d="M7.5 2L3.5 6l4 4" />
-                              </svg>
-                              Change method
-                            </button>
-                          </div>
-                        ) : (
-                          <>
-                            {/* Video feed with reticle */}
-                            <div className="relative w-full h-[180px] overflow-hidden bg-black">
-                              <video
-                                ref={videoRef}
-                                className="w-full h-full object-cover"
-                                autoPlay
-                                muted
-                                playsInline
-                              />
-                              <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                                <div className="w-44 h-[72px] rounded-lg border-2 border-white/70"
-                                  style={{ boxShadow: '0 0 0 9999px rgba(0,0,0,0.35)' }} />
-                              </div>
-                            </div>
-                            {/* Footer */}
-                            <div className="px-3 py-2.5 flex flex-col gap-1">
-                              <span className="text-[11px] text-vds-text-muted">Point camera at barcode…</span>
-                              <button
-                                onClick={handleCameraBack}
-                                className="flex items-center gap-1 text-[11px] text-vds-text-muted hover:text-vds-text-secondary transition-colors self-start"
-                              >
-                                <svg className="w-3 h-3" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.5">
-                                  <path strokeLinecap="round" strokeLinejoin="round" d="M7.5 2L3.5 6l4 4" />
-                                </svg>
-                                Change method
-                              </button>
-                            </div>
-                          </>
-                        )}
-                      </div>
-                    )}
                   </div>
 
                 </div>
@@ -687,6 +600,56 @@
             </div>
 
           </div>
+
+          {/* ── Camera scan dialog ── */}
+          {showCameraDialog && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center p-6">
+              <div className="fixed inset-0 bg-black/50" onClick={() => setShowCameraDialog(false)} />
+              <div className="relative flex flex-col bg-white rounded border-l-4 border-vds-smoke-regular shadow-dialog w-[480px] overflow-hidden">
+
+                {/* Header */}
+                <div className="flex items-center gap-2 pl-4 pr-2 py-2 border-b border-vds-smoke-light bg-vds-smoke-lighter flex-shrink-0">
+                  <h2 className="flex-1 text-[16px] font-semibold text-vds-text-secondary leading-[1.6]">Scan with Camera</h2>
+                  <button
+                    onClick={() => setShowCameraDialog(false)}
+                    className="p-1.5 rounded text-vds-text-secondary hover:bg-black/5 transition-colors"
+                  >
+                    <CloseIcon />
+                  </button>
+                </div>
+
+                {/* Placeholder camera view */}
+                <div className="relative w-full h-[260px] bg-neutral-800 flex items-center justify-center overflow-hidden">
+                  <div className="absolute inset-0"
+                    style={{ background: "radial-gradient(ellipse at 40% 45%, #3a4a52 0%, #1a2428 60%, #0d1618 100%)" }} />
+                  <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                    <div className="w-56 h-[90px] rounded-lg border-2 border-white/60"
+                      style={{ boxShadow: "0 0 0 9999px rgba(0,0,0,0.45)" }} />
+                  </div>
+                  <div className="relative z-10 flex flex-col items-center gap-2 opacity-50 pointer-events-none" style={{ marginTop: "80px" }}>
+                    <svg className="w-6 h-6 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M6.827 6.175A2.31 2.31 0 015.186 7.23c-.38.054-.757.112-1.134.175C2.999 7.58 2.25 8.507 2.25 9.574V18a2.25 2.25 0 002.25 2.25h15A2.25 2.25 0 0021.75 18V9.574c0-1.067-.75-1.994-1.802-2.169a47.865 47.865 0 00-1.134-.175 2.31 2.31 0 01-1.64-1.055l-.822-1.316a2.192 2.192 0 00-1.736-1.039 48.774 48.774 0 00-5.232 0 2.192 2.192 0 00-1.736 1.039l-.821 1.316z" />
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M16.5 12.75a4.5 4.5 0 11-9 0 4.5 4.5 0 019 0zM18.75 10.5h.008v.008h-.008V10.5z" />
+                    </svg>
+                    <span className="text-white text-[11px] tracking-wide">Camera placeholder</span>
+                  </div>
+                </div>
+
+                {/* Footer */}
+                <div className="flex items-center justify-between px-4 py-3 border-t border-vds-border flex-shrink-0">
+                  <span className="text-[11px] text-vds-text-muted">Point the camera at a barcode to scan</span>
+                  <button
+                    onClick={() => setShowCameraDialog(false)}
+                    className="px-3 py-[7px] text-[13px] font-semibold text-vds-btn-default-fg bg-vds-btn-default-bg rounded hover:opacity-90 transition-opacity leading-none"
+                  >
+                    Cancel
+                  </button>
+                </div>
+
+              </div>
+            </div>
+          )}
+
         </div>
       );
     }
